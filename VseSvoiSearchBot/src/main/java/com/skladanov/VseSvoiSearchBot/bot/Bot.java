@@ -26,6 +26,9 @@ public class Bot extends TelegramLongPollingBot {
         if (!update.hasMessage() || !update.getMessage().hasText()) {
             return;
         }
+        if (update.getMessage().getText().equals("/send")) {
+            sendMessage(new SendMessage(String.valueOf(TEST_CHAT_ID), "что-то из БД"));
+        }
         sendMessage(updateHandler.handleUpdate(update));
     }
 
