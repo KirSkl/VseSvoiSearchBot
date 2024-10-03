@@ -1,7 +1,10 @@
 package com.skladanov.VseSvoiSearchBot.bot.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.hibernate.Hibernate;
 
 import java.util.Objects;
@@ -9,7 +12,6 @@ import java.util.Objects;
 @Entity
 @Getter
 @Setter
-@ToString
 @RequiredArgsConstructor
 @NoArgsConstructor
 public class Request {
@@ -23,10 +25,26 @@ public class Request {
     private String gender;
     private String methodTherapy;
     private String clientAge;
+    private String clientGender;
     private String diagnosis;
     private String clientRequest;
     private String budget;
     private String extra;
+
+    @Override
+    public String toString() {
+        return "Ищу специалиста: " +
+                "Возраст специалиста: " + specAge + '\n' +
+                "Пол специалиста: " + gender + '\n' +
+                "Метод работы: " + methodTherapy + '\n' +
+                "Возраст клиента/пациента: " + clientAge + '\n' +
+                "Пол клиента,пациента: " + clientGender + '\n' +
+                "Диагнозы: " + diagnosis + '\n' +
+                "Запрос: " + clientRequest + '\n' +
+                "Бюджет и частота встреч: " + budget + '\n' +
+                "Дополнительные сведения: " + extra + '\n' +
+                '}';
+    }
 
     @Override
     public boolean equals(Object o) {

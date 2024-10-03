@@ -15,6 +15,7 @@ CREATE TABLE Request
     gender        VARCHAR(255),
     methodTherapy VARCHAR(255),
     clientAge     VARCHAR(255),
+    clientGender  VARCHAR(255),
     diagnosis     VARCHAR(255),
     clientRequest VARCHAR(255),
     budget        VARCHAR(255),
