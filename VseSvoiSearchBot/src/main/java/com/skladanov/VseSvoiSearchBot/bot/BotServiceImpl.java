@@ -10,14 +10,16 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class BotServiceImpl implements BotService {
-    private static final String START = "/start";
+    private static final String HELP = "/help";
     private static final String REQUEST = "/request";
     private static final String DELETE = "/delete";
+    private static final String BACK = "/back";
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
 
@@ -34,8 +36,7 @@ public class BotServiceImpl implements BotService {
         return unknownCommand(currentUser.getId());
     }
 
-    @Transactional
-    User getUserOrSave(Update update) {
+    private User getUserOrSave(Update update) {
         Long chatId = update.getMessage().getChatId();
         Optional<User> userOptional = userRepository.findById(chatId);
         User user = null;
@@ -50,7 +51,7 @@ public class BotServiceImpl implements BotService {
 
     private SendMessage checkCommand(String message, Long chatId, User currentUser) {
         switch (message) {
-            case START -> {
+            case HELP -> {
                 return helpCommand(chatId);
             }
             case DELETE -> {
@@ -77,6 +78,18 @@ public class BotServiceImpl implements BotService {
                         "Итак, для начала введите требования к возрасту специалиста: ";
                 currentUser.setStage(RequestStages.SPECIALIST_GENDER);
                 userRepository.save(currentUser);
+                return makeSendMessage(chatId, text);
+            }
+            case BACK -> {
+                if (!currentUser.getIsCreationRequest() ||
+                        currentUser.getStage().equals(RequestStages.SPECIALIST_GENDER)) {
+                    var text = "На данный момент у вас нет заполненных полей запроса";
+                    return makeSendMessage(chatId, text);
+                }
+                var ListStages = Arrays.asList(RequestStages.values());
+                var newStageIndex = ListStages.indexOf(currentUser.getStage()) - 1;
+                currentUser.setStage(ListStages.get(newStageIndex));
+                var text = "Вы вернулись на шаг назад! Можно дать новый ответ на предпоследний вопрос: ";
                 return makeSendMessage(chatId, text);
             }
             default -> {
