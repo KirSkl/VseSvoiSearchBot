@@ -4,6 +4,7 @@ import com.skladanov.VseSvoiSearchBot.bot.model.Request;
 import com.skladanov.VseSvoiSearchBot.bot.model.User;
 import com.skladanov.VseSvoiSearchBot.bot.repo.RequestRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -33,7 +34,8 @@ public class BotServiceImpl implements BotService {
         return unknownCommand(currentUser.getId());
     }
 
-    private User getUserOrSave(Update update) {
+    @Transactional
+    User getUserOrSave(Update update) {
         Long chatId = update.getMessage().getChatId();
         Optional<User> userOptional = userRepository.findById(chatId);
         User user = null;
@@ -74,6 +76,7 @@ public class BotServiceImpl implements BotService {
                         "просто поставьте прочерк(-) или любой другой символ и переходите к следующему вопросу. " +
                         "Итак, для начала введите требования к возрасту специалиста: ";
                 currentUser.setStage(RequestStages.SPECIALIST_GENDER);
+                userRepository.save(currentUser);
                 return makeSendMessage(chatId, text);
             }
             default -> {
@@ -83,7 +86,7 @@ public class BotServiceImpl implements BotService {
     }
 
     public SendMessage makeUserRequest(String message, User currentUser) {
-        Request request = getRequest(currentUser).orElse(new Request());
+        Request request = getRequest(currentUser).orElse(new Request(currentUser));
         String text = switch (currentUser.getStage()) {
             case SPECIALIST_AGE -> { //На данный момент недостижимо
                 currentUser.setStage(RequestStages.SPECIALIST_GENDER);
@@ -153,6 +156,7 @@ public class BotServiceImpl implements BotService {
             }
         };
         requestRepository.save(request);
+        userRepository.save(currentUser);
         return makeSendMessage(currentUser.getId(), text);
     }
 

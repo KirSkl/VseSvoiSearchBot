@@ -13,13 +13,13 @@ import java.util.Objects;
 @Getter
 @Setter
 @RequiredArgsConstructor
-@NoArgsConstructor
 public class Request {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
     @ManyToOne
+    @JoinColumn(name = "users_id")
     private User user;
     private String specAge;
     private String gender;
@@ -30,6 +30,10 @@ public class Request {
     private String clientRequest;
     private String budget;
     private String extra;
+
+    public Request(User user) {
+        this.user = user;
+    }
 
     @Override
     public String toString() {

@@ -13,6 +13,7 @@ import java.util.Objects;
 @ToString
 @AllArgsConstructor
 @Entity
+@Table(name = "users")
 @NoArgsConstructor
 public class User {
     @Id
@@ -22,8 +23,11 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private RequestStages stage = RequestStages.SPECIALIST_AGE;
+
+    @Column(name = "isCreationRequest")
     private Boolean isCreationRequest = false;
-    @OneToMany
+
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
     @ToString.Exclude
     private List<Request> requests;
 
