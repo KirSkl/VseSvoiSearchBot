@@ -51,7 +51,7 @@ public class BotServiceImpl implements BotService {
     private SendMessage checkCommand(String message, Long chatId, User currentUser) {
         switch (message) {
             case START -> {
-                return startCommand(chatId, currentUser.getName());
+                return helpCommand(chatId);
             }
             case DELETE -> {
                 final var request = getRequest(currentUser);
@@ -168,24 +168,24 @@ public class BotServiceImpl implements BotService {
         return Optional.of(requests.get(requests.size() - 1));
     }
 
-    private SendMessage startCommand(Long chatId, String userName) {
+    private SendMessage helpCommand(Long chatId) {
         var text = """
-                Добро пожаловать в бот, %s!
-                                
-                Здесь Вы сможете найти специалиста из сообщества "Все свои" под свой запрос.               
-                Для этого воспользуйтесь командой:
+                Вот как я работаю:
+                Сперва введите команду (можно воспользоваться меню)
                 /request - начать составление запроса
+                
                 После введения этой команды, я задам вам несколько вопросов, и затем, после вашего подтверждения, 
                 отправлю запрос в чат "Все свои". Участникам чата не будет доступна информация о том, кто именно создал
                 запрос. Все отклики будут приходить мне, а я - пересылать вам.
-                                
+                Я сохраню ваш запрос в своей памяти.
+                Однако вы можете удалить запрос из моей памяти с помощью команды
+                /delete - удалить запрос (Внимание! Запрос не будет удален из чата "Все свои", если он уже отправлен)                
+                
                 Дополнительные команды:
-                /start - показать это сообщение
-                /delete - удалить запрос (Внимание! Запрос не будет удален из чата "Все свои", если он уже отправлен)
-                                
-                     
-                """;
-        return makeSendMessage(chatId, String.format(text, userName));
+                /help - показать это сообщение               
+                """
+                ;
+        return makeSendMessage(chatId, text);
     }
 
     private SendMessage unknownCommand(Long chatId) {
