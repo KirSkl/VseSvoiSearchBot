@@ -10,14 +10,17 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class BotServiceImpl implements BotService {
-    private static final String START = "/start";
+    private static final String HELP = "/help";
     private static final String REQUEST = "/request";
     private static final String DELETE = "/delete";
+    private static final String BACK = "/back";
+    private static final int BACK_INDEX = 2; //чтобы вернуться на шаг назад, нужно изменить состояние запроса на 2 значения назад
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
 
@@ -34,8 +37,7 @@ public class BotServiceImpl implements BotService {
         return unknownCommand(currentUser.getId());
     }
 
-    @Transactional
-    User getUserOrSave(Update update) {
+    private User getUserOrSave(Update update) {
         Long chatId = update.getMessage().getChatId();
         Optional<User> userOptional = userRepository.findById(chatId);
         User user = null;
@@ -50,7 +52,7 @@ public class BotServiceImpl implements BotService {
 
     private SendMessage checkCommand(String message, Long chatId, User currentUser) {
         switch (message) {
-            case START -> {
+            case HELP -> {
                 return helpCommand(chatId);
             }
             case DELETE -> {
@@ -79,6 +81,19 @@ public class BotServiceImpl implements BotService {
                 userRepository.save(currentUser);
                 return makeSendMessage(chatId, text);
             }
+            case BACK -> {
+                if (!currentUser.getIsCreationRequest() ||
+                        currentUser.getStage().equals(RequestStages.SPECIALIST_GENDER)) {
+                    var text = "На данный момент у вас нет заполненных полей запроса";
+                    return makeSendMessage(chatId, text);
+                }
+                var ListStages = Arrays.asList(RequestStages.values());
+                var newStageIndex = ListStages.indexOf(currentUser.getStage()) - BACK_INDEX; //
+                currentUser.setStage(ListStages.get(newStageIndex));
+                userRepository.save(currentUser);
+                var text = "Вы вернулись на шаг назад! Можно дать новый ответ на предпоследний вопрос: ";
+                return makeSendMessage(chatId, text);
+            }
             default -> {
                 return unknownCommand(chatId);
             }
@@ -88,11 +103,7 @@ public class BotServiceImpl implements BotService {
     public SendMessage makeUserRequest(String message, User currentUser) {
         Request request = getRequest(currentUser).orElse(new Request(currentUser));
         String text = switch (currentUser.getStage()) {
-            case SPECIALIST_AGE -> { //На данный момент недостижимо
-                currentUser.setStage(RequestStages.SPECIALIST_GENDER);
-                yield "Пожалуйста, введите требования к возрасту специалиста: ";
-            }
-            case SPECIALIST_GENDER -> {
+            case SPECIALIST_AGE, SPECIALIST_GENDER -> { //SPECIALIST_AGE достижим только при нажатии "/Back"
                 request.setSpecAge(message);
                 currentUser.setStage(RequestStages.METHOD);
                 yield "Пожалуйста, введите требования к полу специалиста: ";

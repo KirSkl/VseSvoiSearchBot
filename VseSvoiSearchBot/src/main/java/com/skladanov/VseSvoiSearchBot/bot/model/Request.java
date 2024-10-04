@@ -37,7 +37,7 @@ public class Request {
 
     @Override
     public String toString() {
-        return "Ищу специалиста: " +
+        return "Ищу специалиста: \n" +
                 "Возраст специалиста: " + specAge + '\n' +
                 "Пол специалиста: " + gender + '\n' +
                 "Метод работы: " + methodTherapy + '\n' +
