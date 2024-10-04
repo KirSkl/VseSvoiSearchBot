@@ -42,7 +42,7 @@ public class BotServiceImpl implements BotService {
         Optional<User> userOptional = userRepository.findById(chatId);
         User user = null;
         if (userOptional.isEmpty()) {
-            user = new User(chatId, update.getMessage().getChat().getUserName());
+            user = new User(chatId);
             userRepository.save(user);
         } else {
             user = userOptional.get();
@@ -83,7 +83,8 @@ public class BotServiceImpl implements BotService {
             }
             case BACK -> {
                 if (!currentUser.getIsCreationRequest() ||
-                        currentUser.getStage().equals(RequestStages.SPECIALIST_GENDER)) {
+                        currentUser.getStage().equals(RequestStages.SPECIALIST_GENDER) ||
+                        currentUser.getStage().equals(RequestStages.SPECIALIST_AGE)) {
                     var text = "На данный момент у вас нет заполненных полей запроса";
                     return makeSendMessage(chatId, text);
                 }
@@ -188,8 +189,8 @@ public class BotServiceImpl implements BotService {
                 После введения этой команды, я задам вам несколько вопросов, и затем, после вашего подтверждения, 
                 отправлю запрос в чат "Все свои". Участникам чата не будет доступна информация о том, кто именно создал
                 запрос. Все отклики будут приходить мне, а я - пересылать вам.
-                Я сохраню ваш запрос в своей памяти.
-                Однако вы можете удалить запрос из моей памяти с помощью команды
+                Я сохраню ваш запрос в своей памяти. Однако я не храню ваш никнейм или другие данные для опознавания.
+                Кроме того, вы можете удалить запрос из моей памяти с помощью команды
                 /delete - удалить запрос (Внимание! Запрос не будет удален из чата "Все свои", если он уже отправлен)                
                 
                 Дополнительные команды:

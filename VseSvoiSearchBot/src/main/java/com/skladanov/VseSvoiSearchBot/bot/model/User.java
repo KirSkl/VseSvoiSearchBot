@@ -19,7 +19,6 @@ public class User {
     @Id
     @Column(name = "id", nullable = false)
     private Long id;
-    private String name;
 
     @Enumerated(EnumType.STRING)
     private RequestStages stage = RequestStages.SPECIALIST_AGE;
@@ -31,9 +30,8 @@ public class User {
     @ToString.Exclude
     private List<Request> requests;
 
-    public User (Long id, String name) {
+    public User (Long id) {
         this.id = id;
-        this.name = name;
     }
 
     @Override
