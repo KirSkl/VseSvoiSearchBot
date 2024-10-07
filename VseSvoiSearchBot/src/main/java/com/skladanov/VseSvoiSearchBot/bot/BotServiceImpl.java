@@ -4,9 +4,9 @@ import com.skladanov.VseSvoiSearchBot.bot.model.Request;
 import com.skladanov.VseSvoiSearchBot.bot.model.User;
 import com.skladanov.VseSvoiSearchBot.bot.repo.RequestRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
@@ -25,6 +25,7 @@ public class BotServiceImpl implements BotService {
     private final RequestRepository requestRepository;
 
     @Override
+    @Transactional
     public SendMessage makeAnswer(Update update) {
         User currentUser = getUserOrSave(update);
         String message = update.getMessage().getText().stripLeading();
@@ -194,7 +195,8 @@ public class BotServiceImpl implements BotService {
                 /delete - удалить запрос (Внимание! Запрос не будет удален из чата "Все свои", если он уже отправлен)                
                 
                 Дополнительные команды:
-                /help - показать это сообщение               
+                /help - показать это сообщение
+                /back - изменить ответ на предыдущий вопрос при формировании запроса               
                 """
                 ;
         return makeSendMessage(chatId, text);

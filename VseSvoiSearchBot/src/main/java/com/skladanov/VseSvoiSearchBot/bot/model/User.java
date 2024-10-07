@@ -26,7 +26,7 @@ public class User {
     @Column(name = "isCreationRequest")
     private Boolean isCreationRequest = false;
 
-    @OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
     @ToString.Exclude
     private List<Request> requests;
 
