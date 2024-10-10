@@ -13,7 +13,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 public class Bot extends TelegramLongPollingBot {
     private static final String START = "/start";
     private static final String REQUEST = "/request";
-    private static final Long TEST_CHAT_ID = -1002107664061L;
+    private static final String TEST_CHAT_ID = "-1002107664061L";
     private final UpdateHandler updateHandler;
 
     public Bot(@Value("${bot.token}") String botToken, UpdateHandler updateHandler) {
@@ -26,10 +26,14 @@ public class Bot extends TelegramLongPollingBot {
         if (!update.hasMessage() || !update.getMessage().hasText()) {
             return;
         }
-        /*if (update.getMessage().getText().equals("/send")) {
-            sendMessage(new SendMessage(String.valueOf(TEST_CHAT_ID), "что-то из БД"));
-        }*/
-        sendMessage(updateHandler.handleUpdate(update));
+
+        final var message = updateHandler.handleUpdate(update);
+        if (message.getText().equals("Готово! Отправил ваш запрос в чат!")) {
+            final var request = updateHandler.getRequest();
+            sendMessage(new SendMessage("Привет!\n" +
+                    request.toString(), TEST_CHAT_ID));
+        }
+        sendMessage(message);
     }
 
     @Override

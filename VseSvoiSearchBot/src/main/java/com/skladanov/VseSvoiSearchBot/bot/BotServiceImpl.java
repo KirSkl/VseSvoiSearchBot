@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -23,6 +25,7 @@ public class BotServiceImpl implements BotService {
     private static final int BACK_INDEX = 2; //чтобы вернуться на шаг назад, нужно изменить состояние запроса на 2 значения назад
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
+    private final List<Request> requests = new ArrayList<>();
 
     @Override
     @Transactional
@@ -36,6 +39,13 @@ public class BotServiceImpl implements BotService {
             return makeUserRequest(message, currentUser);
         }
         return unknownCommand(currentUser.getId());
+    }
+
+    @Override
+    public Request getRequest() {
+        final var request = requests.get(0);
+        requests.clear();
+        return request;
     }
 
     private User getUserOrSave(Update update) {
@@ -161,7 +171,8 @@ public class BotServiceImpl implements BotService {
             case SEND_APPROVED -> {
                 if (message.equals("/send")) {
                     currentUser.setIsCreationRequest(false);
-                    yield "Запрос отправлен!";
+                    requests.add(currentUser.getRequests().get(0));
+                    yield "Готово! Отправил ваш запрос в чат!";
                 } else {
                     yield "Команда не распознана. Чтобы отправить запрос, введите \"/send\". " +
                             "Чтобы удалить запрос, введите \"/delete\"";
