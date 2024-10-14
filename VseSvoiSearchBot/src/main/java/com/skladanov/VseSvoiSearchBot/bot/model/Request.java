@@ -47,8 +47,10 @@ public class Request {
                 "Запрос: " + clientRequest + '\n' +
                 "Бюджет и частота встреч: " + budget + '\n' +
                 "Дополнительные сведения: " + extra + '\n' +
-                '}';
-    }
+                "Для отклика перейдите в бот, выберите команду /answer и введите номер этого запроса: \n" +
+                + (id*31);
+    };
+
 
     @Override
     public boolean equals(Object o) {
