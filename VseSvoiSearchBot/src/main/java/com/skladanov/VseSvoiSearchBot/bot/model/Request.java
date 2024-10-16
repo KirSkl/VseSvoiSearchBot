@@ -24,6 +24,7 @@ public class Request {
     private String specAge;
     private String gender;
     private String methodTherapy;
+    private String formatTherapy;
     private String clientAge;
     private String clientGender;
     private String diagnosis;
@@ -41,6 +42,7 @@ public class Request {
                 "Возраст специалиста: " + specAge + '\n' +
                 "Пол специалиста: " + gender + '\n' +
                 "Метод работы: " + methodTherapy + '\n' +
+                "Формат работы: " + formatTherapy + '\n' +
                 "Возраст клиента/пациента: " + clientAge + '\n' +
                 "Пол клиента,пациента: " + clientGender + '\n' +
                 "Диагнозы: " + diagnosis + '\n' +

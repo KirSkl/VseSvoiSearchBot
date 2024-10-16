@@ -4,6 +4,7 @@ public enum RequestStages {
     SPECIALIST_AGE,
     SPECIALIST_GENDER,
     METHOD,
+    FORM,
     CLIENT_AGE,
     CLIENT_GENDER,
     CLIENT_DIAGNOSIS,

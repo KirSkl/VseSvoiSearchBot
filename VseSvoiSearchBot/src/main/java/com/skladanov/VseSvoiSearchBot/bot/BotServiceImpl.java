@@ -1,10 +1,10 @@
 package com.skladanov.VseSvoiSearchBot.bot;
 
-import com.skladanov.VseSvoiSearchBot.bot.model.Response;
 import com.skladanov.VseSvoiSearchBot.bot.model.Request;
+import com.skladanov.VseSvoiSearchBot.bot.model.Response;
 import com.skladanov.VseSvoiSearchBot.bot.model.User;
-import com.skladanov.VseSvoiSearchBot.bot.repo.ResponseRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.RequestRepository;
+import com.skladanov.VseSvoiSearchBot.bot.repo.ResponseRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,9 +13,14 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+
+/*
+ * todo: добавить логику удаления отклика
+ * реализовать отправку отлика кому надо
+ * отрефакторить этого монстра
+ * */
 
 @Service
 @RequiredArgsConstructor
@@ -102,15 +107,30 @@ public class BotServiceImpl implements BotService {
                 return makeSendMessage(chatId, text);
             }
             case BACK -> {
-                if (!currentUser.getIsCreationRequest() ||
-                        currentUser.getRequestStage().equals(RequestStages.SPECIALIST_GENDER) ||
-                        currentUser.getRequestStage().equals(RequestStages.SPECIALIST_AGE)) {
-                    var text = "На данный момент у вас нет заполненных полей запроса";
+                if (currentUser.getIsCreationRequest()) {
+                    RequestStages requestStage = currentUser.getRequestStage();
+                    if (requestStage.equals(RequestStages.SPECIALIST_GENDER) ||
+                            requestStage.equals(RequestStages.SPECIALIST_AGE)) {
+                        var text = "На данный момент у вас нет заполненных полей запроса";
+                        return makeSendMessage(chatId, text);
+                    }
+                    final var stages = RequestStages.values();
+                    final var newStageIndex = requestStage.ordinal() - BACK_INDEX; //
+                    currentUser.setRequestStage(stages[newStageIndex]);
+                } else if (currentUser.getIsAnswering()) {
+                    ResponseStages responseStages = currentUser.getResponseStages();
+                    if (responseStages.equals(ResponseStages.NUMBER) ||
+                            responseStages.equals(ResponseStages.CONTENT)) {
+                        var text = "На данный момент у вас нет заполненных полей отклика";
+                        return makeSendMessage(chatId, text);
+                    }
+                    final var stages = ResponseStages.values();
+                    final var newStageIndex = responseStages.ordinal() - BACK_INDEX; //
+                    currentUser.setResponseStages(stages[newStageIndex]);
+                } else {
+                    var text = "На данный момент возвращаться некуда";
                     return makeSendMessage(chatId, text);
                 }
-                var ListStages = Arrays.asList(RequestStages.values());
-                var newStageIndex = ListStages.indexOf(currentUser.getRequestStage()) - BACK_INDEX; //
-                currentUser.setRequestStage(ListStages.get(newStageIndex));
                 userRepository.save(currentUser);
                 var text = "Вы вернулись на шаг назад! Можно дать новый ответ на предпоследний вопрос: ";
                 return makeSendMessage(chatId, text);
@@ -143,11 +163,18 @@ public class BotServiceImpl implements BotService {
             }
             case METHOD -> {
                 request.setGender(message);
-                currentUser.setRequestStage(RequestStages.BUDGET);
+                currentUser.setRequestStage(RequestStages.FORM);
                 yield "Пожалуйста, введите требования к методу, в котором работает специалист";
             }
-            case BUDGET -> {
+            case FORM -> {
                 request.setMethodTherapy(message);
+                currentUser.setRequestStage(RequestStages.BUDGET);
+                yield "Пожалуйста, введите пожеланию к формату работы (очно/онлайн). " +
+                        "Если требуется очный формат, так же введите название населенного пункта. Например: \n" +
+                        "\"Онлайн или очно в Порту(Португалия)\"";
+            }
+            case BUDGET -> {
+                request.setFormatTherapy(message);
                 currentUser.setRequestStage(RequestStages.CLIENT_AGE);
                 yield "Пожалуйста, введите ваши пожелания касаемо стоимости сессий и их частоты";
             }
@@ -206,13 +233,12 @@ public class BotServiceImpl implements BotService {
     }
 
     private SendMessage makeResponse(String message, User currentUser) {
-        var answer = getResponse(currentUser).orElse(new Response(currentUser));
+        var response = getResponse(currentUser).orElse(new Response(currentUser));
         String text = switch (currentUser.getResponseStages()) {
-            case NUMBER -> null;
-            case CONTACTS -> {
+            case NUMBER, CONTACTS -> {
                 final var number = Long.parseLong(message) / DECRYPT_KEY;
                 if (requestRepository.findById(number).isPresent()) {
-                    answer.setNumber(number);
+                    response.setNumber(number);
                     currentUser.setResponseStages(ResponseStages.CONTENT);
                     yield "Запрос найден! Пожалуйста, введите в свободной форме свои контактные данные, " +
                             "которые будут пересланы пользователю " +
@@ -222,7 +248,7 @@ public class BotServiceImpl implements BotService {
                 }
             }
             case CONTENT -> {
-                answer.setContacts(message);
+                response.setContacts(message);
                 currentUser.setResponseStages(ResponseStages.SEND_RESPONSE);
                 yield "Ага, записал. Введите, пожалуйста, текст отклика, который я перешлю " +
                         "клиенту вместе с контактами. Например: " +
@@ -231,13 +257,13 @@ public class BotServiceImpl implements BotService {
                         "принимаю очно и онлайн. Стоимость - 5000 за сессию 50мин\"";
             }
             case SEND_RESPONSE -> {
-                answer.setContent(message);
+                response.setContent(message);
                 currentUser.setResponseStages(ResponseStages.SEND_APPROVED);
                 yield "Готово! Смотрите, что получилось:\n" +
-                        answer +"\n Отправляем? Если да, введите /sendResponse";
+                        response + "\n Отправляем? Если да, введите /sendResponse";
             }
             case SEND_APPROVED -> {
-                if(message.equals("/sendResponse")) {
+                if (message.equals("/sendResponse")) {
                     currentUser.setIsAnswering(false);
                     responses.add(currentUser.getResponses().get(0));
                     yield "Отклик отправлен!";
@@ -247,11 +273,11 @@ public class BotServiceImpl implements BotService {
                 }
             }
         };
-        responseRepository.save(answer);
+        responseRepository.save(response);
         userRepository.save(currentUser);
         return makeSendMessage(currentUser.getId(), text);
 
-    };
+    }
 
     private Optional<Request> getRequest(User currentUser) {
         final var requests = currentUser.getRequests();
