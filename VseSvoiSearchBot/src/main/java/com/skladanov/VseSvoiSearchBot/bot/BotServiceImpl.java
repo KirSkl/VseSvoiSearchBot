@@ -7,6 +7,7 @@ import com.skladanov.VseSvoiSearchBot.bot.repo.RequestRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.ResponseRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.number.PercentStyleFormatter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -17,9 +18,14 @@ import java.util.List;
 import java.util.Optional;
 
 /*
- * todo: добавить логику удаления отклика
- * реализовать отправку отлика кому надо
+ * todo: реализовать отправку отлика кому надо
  * отрефакторить этого монстра
+ * заменить строки в сравнении на константы, поместить константы в отдельный класс
+ * реализовать получение всех своих запросов/ откликов
+ * реализовать удаление отдельных запросов и откликов
+ * реализовать удаление всех запросов/откликов
+ * реализовать команду старт как сброс текущих операций
+ *
  * */
 
 @Service
@@ -27,9 +33,10 @@ import java.util.Optional;
 public class BotServiceImpl implements BotService {
     private static final String HELP = "/help";
     private static final String REQUEST = "/request";
-    private static final String DELETE = "/delete";
+    private static final String DELETE_REQUEST = "/delete_req";
+    public static final String DELETE_RESPONSE = "/delete_resp";
     private static final String BACK = "/back";
-    private static final String ANSWER = "/answer";
+    private static final String RESPONSE = "/response";
     private static final Long DECRYPT_KEY = 31L;
     private static final int BACK_INDEX = 2; //чтобы вернуться на шаг назад, нужно изменить состояние запроса на 2 значения назад
     private final UserRepository userRepository;
@@ -80,7 +87,7 @@ public class BotServiceImpl implements BotService {
             case HELP -> {
                 return helpCommand(chatId);
             }
-            case DELETE -> {
+            case DELETE_REQUEST -> {
                 final var request = getRequest(currentUser);
                 if (request.isPresent()) {
                     requestRepository.delete(request.get());
@@ -90,10 +97,20 @@ public class BotServiceImpl implements BotService {
                 return makeSendMessage(chatId, "На данный момент у вас нет сохраненного запроса. " +
                         "Чтобы составить новый запрос, введите команду \"/request\"");
             }
+            case DELETE_RESPONSE -> {
+                final var response = getResponse(currentUser);
+                if (response.isPresent()) {
+                    responseRepository.delete(response.get());
+                    return makeSendMessage(chatId, "Отклик удален. Чтобы отправить новый отклик, " +
+                            "введите команду \"/response\"");
+                }
+                return makeSendMessage(chatId, "На данный момент у вас нет сохраненного запроса. " +
+                        "Чтобы составить новый запрос, введите команду \"/response\"");
+            }
             case REQUEST -> {
                 if (currentUser.getIsCreationRequest()) {
                     var text = "Вы уже в процессе заполнения запроса на поиск. " +
-                            "Если хотите удалить текущий запрос, введите команду \"/delete\"";
+                            "Если хотите удалить текущий запрос, введите команду \"/delete_req\"";
                     return makeSendMessage(chatId, text);
                 }
                 currentUser.setIsCreationRequest(true);
@@ -135,7 +152,7 @@ public class BotServiceImpl implements BotService {
                 var text = "Вы вернулись на шаг назад! Можно дать новый ответ на предпоследний вопрос: ";
                 return makeSendMessage(chatId, text);
             }
-            case ANSWER -> {
+            case RESPONSE -> {
                 if (currentUser.getIsAnswering()) {
                     var text = "Вы уже в процессе отклика на заявку. " +
                             "Если хотите удалить текущий отклик, введите команду \"/delete\"";
