@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.hibernate.Hibernate;
 
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -31,6 +32,9 @@ public class Request {
     private String clientRequest;
     private String budget;
     private String extra;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "request")
+    private List<Response> response;
 
     public Request(User user) {
         this.user = user;

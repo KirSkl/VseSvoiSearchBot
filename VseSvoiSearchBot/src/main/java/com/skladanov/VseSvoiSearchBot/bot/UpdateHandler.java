@@ -1,6 +1,7 @@
 package com.skladanov.VseSvoiSearchBot.bot;
 
 import com.skladanov.VseSvoiSearchBot.bot.model.Request;
+import com.skladanov.VseSvoiSearchBot.bot.model.Response;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -18,5 +19,9 @@ class UpdateHandler {
 
     public Request getRequest() {
         return botService.getRequest();
+    }
+
+    public Response getResponse() {
+        return botService.getResponse();
     }
 }

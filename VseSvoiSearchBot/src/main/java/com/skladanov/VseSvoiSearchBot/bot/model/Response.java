@@ -1,7 +1,9 @@
 package com.skladanov.VseSvoiSearchBot.bot.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.hibernate.Hibernate;
 
 import java.util.Objects;
@@ -11,23 +13,22 @@ import java.util.Objects;
 @Setter
 @RequiredArgsConstructor
 public class Response {
+    @ManyToOne
+    @JoinColumn(name = "users_id")
+    User user;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
-
-    @ManyToOne
-    @JoinColumn(name = "users_id")
-    User user;
-
     @Column(name = "contacts")
     private String contacts;
 
     @Column(name = "content")
     private String content;
 
-    @Column(name = "number")
-    private Long number;
+    @ManyToOne
+    @JoinColumn(name = "requests_id")
+    private Request request;
 
     public Response(User user) {
         this.user = user;
@@ -35,9 +36,8 @@ public class Response {
 
     @Override
     public String toString() {
-      return content + "Контактные данные: " + contacts;
-    };
-
+        return content + "Контактные данные: " + contacts;
+    }
 
 
     @Override

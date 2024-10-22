@@ -26,12 +26,17 @@ public class Bot extends TelegramLongPollingBot {
         if (!update.hasMessage() || !update.getMessage().hasText()) {
             return;
         }
-
         final var message = updateHandler.handleUpdate(update);
         if (message.getText().equals("Готово! Отправил ваш запрос в чат!")) {
             final var request = updateHandler.getRequest();
-            sendMessage(new SendMessage("Привет!\n" +
-                    request.toString(), TEST_CHAT_ID));
+            sendMessage(new SendMessage(TEST_CHAT_ID, "Привет!\n" +
+                    request.toString()));
+        }
+        if (message.getText().equals("Отклик отправлен!")) {
+            final var response = updateHandler.getResponse();
+            sendMessage(new SendMessage(response.getRequest().getUser().getId().toString(),
+                    "Привет! Новый отклик на ваш запрос:\n" +
+                            response));
         }
         sendMessage(message);
     }
@@ -43,10 +48,11 @@ public class Bot extends TelegramLongPollingBot {
 
     private void sendMessage(SendMessage message) {
         try {
-            execute(message);
+            var msgId = execute(message).getMessageId(); //в дальнейшем использовать id для редактирования сообщения
         } catch (TelegramApiException e) {
             log.error("Ошибка отправки сообщения", e);
         }
     }
+
 
 }

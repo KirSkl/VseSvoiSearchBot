@@ -18,13 +18,14 @@ import java.util.List;
 import java.util.Optional;
 
 /*
- * todo: реализовать отправку отлика кому надо
- * отрефакторить этого монстра
+ * todo: отрефакторить этого монстра
  * заменить строки в сравнении на константы, поместить константы в отдельный класс
  * реализовать получение всех своих запросов/ откликов
  * реализовать удаление отдельных запросов и откликов
  * реализовать удаление всех запросов/откликов
  * реализовать команду старт как сброс текущих операций
+ * добавить команды в меню
+ * реализовать редактирование сообщений и отмену запроса/отклика
  *
  * */
 
@@ -67,6 +68,13 @@ public class BotServiceImpl implements BotService {
         final var request = requests.get(0);
         requests.clear();
         return request;
+    }
+
+    @Override
+    public Response getResponse() {
+        final var response = responses.get(0);
+        responses.clear();
+        return response;
     }
 
     private User getUserOrSave(Update update) {
@@ -254,8 +262,9 @@ public class BotServiceImpl implements BotService {
         String text = switch (currentUser.getResponseStages()) {
             case NUMBER, CONTACTS -> {
                 final var number = Long.parseLong(message) / DECRYPT_KEY;
-                if (requestRepository.findById(number).isPresent()) {
-                    response.setNumber(number);
+                final var request = requestRepository.findById(number);
+                if (request.isPresent()) {
+                    response.setRequest(request.get());
                     currentUser.setResponseStages(ResponseStages.CONTENT);
                     yield "Запрос найден! Пожалуйста, введите в свободной форме свои контактные данные, " +
                             "которые будут пересланы пользователю " +
