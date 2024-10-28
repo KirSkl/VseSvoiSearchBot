@@ -6,20 +6,16 @@ import com.skladanov.VseSvoiSearchBot.bot.model.User;
 import com.skladanov.VseSvoiSearchBot.bot.repo.RequestRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.ResponseRepository;
 import com.skladanov.VseSvoiSearchBot.bot.repo.UserRepository;
+import com.skladanov.VseSvoiSearchBot.bot.util.SendMessageWithData;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.number.PercentStyleFormatter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 /*
  * todo: отрефакторить этого монстра
- * заменить строки в сравнении на константы, поместить константы в отдельный класс
  * реализовать получение всех своих запросов/ откликов
  * реализовать удаление отдельных запросов и откликов
  * реализовать удаление всех запросов/откликов
@@ -32,10 +28,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class BotServiceImpl implements BotService {
+    public static final String DELETE_RESPONSE = "/delete_resp";
     private static final String HELP = "/help";
     private static final String REQUEST = "/request";
     private static final String DELETE_REQUEST = "/delete_req";
-    public static final String DELETE_RESPONSE = "/delete_resp";
     private static final String BACK = "/back";
     private static final String RESPONSE = "/response";
     private static final Long DECRYPT_KEY = 31L;
@@ -43,16 +39,14 @@ public class BotServiceImpl implements BotService {
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
     private final ResponseRepository responseRepository;
-    private final List<Request> requests = new ArrayList<>();
-    private final List<Response> responses = new ArrayList<>();
 
     @Override
     @Transactional
-    public SendMessage makeAnswer(Update update) {
-        User currentUser = getUserOrSave(update);
-        String message = update.getMessage().getText().stripLeading().toLowerCase();
+    public SendMessageWithData makeAnswer(Update update) {
+        final User currentUser = getUserOrSave(update);
+        final String message = update.getMessage().getText().stripLeading().toLowerCase();
         if (message.charAt(0) == '/') {
-            return checkCommand(message, currentUser.getId(), currentUser);
+            return checkCommand(message, currentUser);
         }
         if (currentUser.getIsAnswering()) {
             return makeResponse(message, currentUser);
@@ -60,27 +54,13 @@ public class BotServiceImpl implements BotService {
         if (currentUser.getIsCreationRequest()) {
             return makeUserRequest(message, currentUser);
         }
-        return unknownCommand(currentUser.getId());
-    }
-
-    @Override
-    public Request getRequest() {
-        final var request = requests.get(0);
-        requests.clear();
-        return request;
-    }
-
-    @Override
-    public Response getResponse() {
-        final var response = responses.get(0);
-        responses.clear();
-        return response;
+        return unknownCommand(currentUser.getId().toString());
     }
 
     private User getUserOrSave(Update update) {
         Long chatId = update.getMessage().getChatId();
         Optional<User> userOptional = userRepository.findById(chatId);
-        User user = null;
+        User user;
         if (userOptional.isEmpty()) {
             user = new User(chatId);
             userRepository.save(user);
@@ -90,96 +70,118 @@ public class BotServiceImpl implements BotService {
         return user;
     }
 
-    private SendMessage checkCommand(String message, Long chatId, User currentUser) {
-        switch (message) {
-            case HELP -> {
-                return helpCommand(chatId);
-            }
-            case DELETE_REQUEST -> {
-                final var request = getRequest(currentUser);
-                if (request.isPresent()) {
-                    requestRepository.delete(request.get());
-                    return makeSendMessage(chatId, "Запрос удален. Чтобы составить новый запрос, " +
-                            "введите команду \"/request\"");
-                }
-                return makeSendMessage(chatId, "На данный момент у вас нет сохраненного запроса. " +
-                        "Чтобы составить новый запрос, введите команду \"/request\"");
-            }
-            case DELETE_RESPONSE -> {
-                final var response = getResponse(currentUser);
-                if (response.isPresent()) {
-                    responseRepository.delete(response.get());
-                    return makeSendMessage(chatId, "Отклик удален. Чтобы отправить новый отклик, " +
-                            "введите команду \"/response\"");
-                }
-                return makeSendMessage(chatId, "На данный момент у вас нет сохраненного запроса. " +
-                        "Чтобы составить новый запрос, введите команду \"/response\"");
-            }
-            case REQUEST -> {
-                if (currentUser.getIsCreationRequest()) {
-                    var text = "Вы уже в процессе заполнения запроса на поиск. " +
-                            "Если хотите удалить текущий запрос, введите команду \"/delete_req\"";
-                    return makeSendMessage(chatId, text);
-                }
-                currentUser.setIsCreationRequest(true);
-                var text = "Отлично! Сейчас я попрошу вас заполнить несколько полей, " +
-                        "чтобы составить запрос, после чего вы сможете подтвердить отправку. " +
-                        "Если вы не хотите или не знаете, что написать в поле, " +
-                        "просто поставьте прочерк(-) или любой другой символ и переходите к следующему вопросу. " +
-                        "Итак, для начала введите требования к возрасту специалиста: ";
-                currentUser.setRequestStage(RequestStages.SPECIALIST_GENDER);
-                userRepository.save(currentUser);
-                return makeSendMessage(chatId, text);
-            }
-            case BACK -> {
-                if (currentUser.getIsCreationRequest()) {
-                    RequestStages requestStage = currentUser.getRequestStage();
-                    if (requestStage.equals(RequestStages.SPECIALIST_GENDER) ||
-                            requestStage.equals(RequestStages.SPECIALIST_AGE)) {
-                        var text = "На данный момент у вас нет заполненных полей запроса";
-                        return makeSendMessage(chatId, text);
-                    }
-                    final var stages = RequestStages.values();
-                    final var newStageIndex = requestStage.ordinal() - BACK_INDEX; //
-                    currentUser.setRequestStage(stages[newStageIndex]);
-                } else if (currentUser.getIsAnswering()) {
-                    ResponseStages responseStages = currentUser.getResponseStages();
-                    if (responseStages.equals(ResponseStages.NUMBER) ||
-                            responseStages.equals(ResponseStages.CONTENT)) {
-                        var text = "На данный момент у вас нет заполненных полей отклика";
-                        return makeSendMessage(chatId, text);
-                    }
-                    final var stages = ResponseStages.values();
-                    final var newStageIndex = responseStages.ordinal() - BACK_INDEX; //
-                    currentUser.setResponseStages(stages[newStageIndex]);
-                } else {
-                    var text = "На данный момент возвращаться некуда";
-                    return makeSendMessage(chatId, text);
-                }
-                userRepository.save(currentUser);
-                var text = "Вы вернулись на шаг назад! Можно дать новый ответ на предпоследний вопрос: ";
-                return makeSendMessage(chatId, text);
-            }
-            case RESPONSE -> {
-                if (currentUser.getIsAnswering()) {
-                    var text = "Вы уже в процессе отклика на заявку. " +
-                            "Если хотите удалить текущий отклик, введите команду \"/delete\"";
-                    return makeSendMessage(chatId, text);
-                }
-                currentUser.setIsAnswering(true);
-                var text = "Отлично! Введите номер запроса (указан в сообщении в чате):";
-                currentUser.setResponseStages(ResponseStages.CONTACTS);
-                userRepository.save(currentUser);
-                return makeSendMessage(chatId, text);
-            }
-            default -> {
-                return unknownCommand(chatId);
-            }
-        }
+    private SendMessageWithData checkCommand(String message, User currentUser) {
+        final var chatId = currentUser.getId().toString();
+
+        return switch (message) {
+            case HELP -> handleHelp(chatId);
+            case DELETE_REQUEST -> handleDeleteRequest(chatId, currentUser);
+            case DELETE_RESPONSE -> handleDeleteResponse(chatId, currentUser);
+            case REQUEST -> handleRequest(chatId, currentUser);
+            case BACK -> handleBack(chatId, currentUser);
+            case RESPONSE -> handleResponse(chatId, currentUser);
+            default -> unknownCommand(chatId);
+        };
     }
 
-    public SendMessage makeUserRequest(String message, User currentUser) {
+    private SendMessageWithData handleHelp(String chatId) {
+        return helpCommand(chatId);
+    }
+
+    private SendMessageWithData handleDeleteRequest(String chatId, User currentUser) {
+        final var request = getRequest(currentUser);
+        var text = "";
+        if (request.isPresent()) {
+            requestRepository.delete(request.get());
+            text = "Запрос удален. Чтобы составить новый запрос, введите команду \"/request\"";
+        } else {
+            text = "На данный момент у вас нет сохраненного запроса. " +
+                    "Чтобы составить новый запрос, введите команду \"/request\"";
+        }
+        return new SendMessageWithData(chatId, text);
+    }
+
+    private SendMessageWithData handleDeleteResponse(String chatId, User currentUser) {
+        final var response = getResponse(currentUser);
+        var text = "";
+        if (response.isPresent()) {
+            responseRepository.delete(response.get());
+            text = "Отклик удален. Чтобы отправить новый отклик, введите команду \"/response\"";
+        } else {
+            text = "На данный момент у вас нет сохраненного запроса. " +
+                    "Чтобы составить новый запрос, введите команду \"/response\"";
+        }
+        return new SendMessageWithData(chatId, text);
+    }
+
+    private SendMessageWithData handleRequest(String chatId, User currentUser) {
+        var text = "";
+        if (currentUser.getIsCreationRequest()) {
+            text = "Вы уже в процессе заполнения запроса на поиск. " +
+                    "Если хотите удалить текущий запрос, введите команду \"/delete_req\"";
+        } else {
+            currentUser.setIsCreationRequest(true);
+            userRepository.save(currentUser);
+            text = "Отлично! Сейчас я попрошу вас заполнить несколько полей, чтобы составить запрос, " +
+                    "после чего вы сможете подтвердить отправку...";
+        }
+        return new SendMessageWithData(chatId, text);
+    }
+
+    private SendMessageWithData handleBack(String chatId, User currentUser) {
+        if (currentUser.getIsCreationRequest()) {
+            return handleBackInRequest(chatId, currentUser);
+        }
+        if (currentUser.getIsAnswering()) {
+            return handleBackInResponse(chatId, currentUser);
+        }
+        return new SendMessageWithData(chatId, "На данный момент возвращаться некуда");
+    }
+
+    private SendMessageWithData handleBackInResponse(String chatId, User currentUser) {
+        ResponseStages responseStages = currentUser.getResponseStages();
+        if (responseStages.equals(ResponseStages.NUMBER) ||
+                responseStages.equals(ResponseStages.CONTENT)) {
+            return new SendMessageWithData(chatId,
+                    "На данный момент у вас нет заполненных полей отклика");
+        }
+        final var stages = ResponseStages.values();
+        final var newStageIndex = responseStages.ordinal() - BACK_INDEX; //
+        currentUser.setResponseStages(stages[newStageIndex]);
+        userRepository.save(currentUser);
+        return new SendMessageWithData(chatId,
+                "Вы вернулись на шаг назад! Можно дать новый ответ на предпоследний вопрос: ");
+    }
+
+
+    private SendMessageWithData handleBackInRequest(String chatId, User currentUser) {
+        RequestStages requestStage = currentUser.getRequestStage();
+        if (requestStage.equals(RequestStages.SPECIALIST_GENDER) ||
+                requestStage.equals(RequestStages.SPECIALIST_AGE)) {
+            var text = "На данный момент у вас нет заполненных полей запроса";
+            return new SendMessageWithData(chatId, text);
+        }
+        final var stages = RequestStages.values();
+        final var newStageIndex = requestStage.ordinal() - BACK_INDEX; //
+        currentUser.setRequestStage(stages[newStageIndex]);
+        userRepository.save(currentUser);
+        return new SendMessageWithData(chatId, "Вы вернулись на шаг назад! " +
+                "Можно дать новый ответ на предпоследний вопрос: ");
+    }
+
+    private SendMessageWithData handleResponse(String chatId, User currentUser) {
+        if (currentUser.getIsAnswering()) {
+            return new SendMessageWithData(chatId, "Вы уже в процессе отклика на заявку. " +
+                    "Если хотите удалить текущий отклик, введите команду \"/delete\"");
+        }
+        currentUser.setIsAnswering(true);
+        userRepository.save(currentUser);
+        return new SendMessageWithData(chatId, "Отлично! Введите номер запроса (указан в сообщении в чате):");
+    }
+
+    public SendMessageWithData makeUserRequest(String message, User currentUser) {
         Request request = getRequest(currentUser).orElse(new Request(currentUser));
+        final var sendMessageWithData = new SendMessageWithData();
         String text = switch (currentUser.getRequestStage()) {
             case SPECIALIST_AGE, SPECIALIST_GENDER -> { //SPECIALIST_AGE достижим только при нажатии "/Back"
                 request.setSpecAge(message);
@@ -244,7 +246,7 @@ public class BotServiceImpl implements BotService {
             case SEND_APPROVED -> {
                 if (message.equals("/send")) {
                     currentUser.setIsCreationRequest(false);
-                    requests.add(currentUser.getRequests().get(0));
+                    sendMessageWithData.setRequest(currentUser.getRequests().get(0));
                     yield "Готово! Отправил ваш запрос в чат!";
                 } else {
                     yield "Команда не распознана. Чтобы отправить запрос, введите \"/send\". " +
@@ -254,10 +256,13 @@ public class BotServiceImpl implements BotService {
         };
         requestRepository.save(request);
         userRepository.save(currentUser);
-        return makeSendMessage(currentUser.getId(), text);
+        sendMessageWithData.setChatId(currentUser.getId());
+        sendMessageWithData.setText(text);
+        return sendMessageWithData;
     }
 
-    private SendMessage makeResponse(String message, User currentUser) {
+    private SendMessageWithData makeResponse(String message, User currentUser) {
+        final var sendMessageWithData = new SendMessageWithData();
         var response = getResponse(currentUser).orElse(new Response(currentUser));
         String text = switch (currentUser.getResponseStages()) {
             case NUMBER, CONTACTS -> {
@@ -291,7 +296,7 @@ public class BotServiceImpl implements BotService {
             case SEND_APPROVED -> {
                 if (message.equals("/sendResponse")) {
                     currentUser.setIsAnswering(false);
-                    responses.add(currentUser.getResponses().get(0));
+                    sendMessageWithData.setResponse(currentUser.getResponses().get(0));
                     yield "Отклик отправлен!";
                 } else {
                     yield "Команда не распознана. Чтобы отправить отклик, введите \"/sendResponse\". " +
@@ -301,8 +306,9 @@ public class BotServiceImpl implements BotService {
         };
         responseRepository.save(response);
         userRepository.save(currentUser);
-        return makeSendMessage(currentUser.getId(), text);
-
+        sendMessageWithData.setChatId(currentUser.getId());
+        sendMessageWithData.setText(text);
+        return sendMessageWithData;
     }
 
     private Optional<Request> getRequest(User currentUser) {
@@ -321,7 +327,7 @@ public class BotServiceImpl implements BotService {
         return Optional.of(responses.get(responses.size() - 1));
     }
 
-    private SendMessage helpCommand(Long chatId) {
+    private SendMessageWithData helpCommand(String chatId) {
         var text = """
                 Вот как я работаю:
                 Сперва введите команду (можно воспользоваться меню)
@@ -338,16 +344,14 @@ public class BotServiceImpl implements BotService {
                 /help - показать это сообщение
                 /back - изменить ответ на предыдущий вопрос при формировании запроса               
                 """;
-        return makeSendMessage(chatId, text);
+        return new SendMessageWithData(chatId, text);
     }
 
-    private SendMessage unknownCommand(Long chatId) {
-        var text = "Не удалось распознать команду!";
-        return makeSendMessage(chatId, text);
+    private SendMessageWithData unknownCommand(String chatId) {
+        return new SendMessageWithData(chatId, "Не удалось распознать команду!");
     }
 
-
-    private SendMessage makeSendMessage(Long chatId, String text) {
-        return new SendMessage(String.valueOf(chatId), text);
-    }
+    /*private SendMessage makeSendMessage(String chatId, String text) {
+        return new SendMessage(chatId, text);
+    }*/
 }
