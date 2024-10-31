@@ -8,4 +8,5 @@ public class Commands {
     public static final String BACK = "/back";
     public static final String RESPONSE = "/response";
     public static final String SHOW_REQUESTS = "/show_requests";
+    public static final String STOP_REQUEST = "/stop_request";
 }

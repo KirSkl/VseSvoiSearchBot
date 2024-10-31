@@ -35,6 +35,9 @@ public class User {
     @Column(name = "isAnswering")
     private Boolean isAnswering = false;
 
+    @Column(name = "isStoping")
+    private Boolean isStop = false;
+
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
     @ToString.Exclude
     private List<Request> requests;

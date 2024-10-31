@@ -48,7 +48,32 @@ public class BotServiceImpl implements BotService {
         if (currentUser.getIsCreationRequest()) {
             return makeUserRequest(message, currentUser);
         }
+        if(currentUser.getIsStop()) {
+            return makeStop(message, currentUser);
+        }
         return unknownCommand(currentUser.getId().toString());
+    }
+
+    private SendMessageWithData makeStop(String message, User currentUser) {
+        final var chatId = String.valueOf(currentUser.getId());
+        long requestId = 0;
+        try {
+            requestId = Long.parseLong(message);
+        } catch (NumberFormatException nfe) {
+            return new SendMessageWithData(chatId,
+                    "Пожалуйста, введите номер запроса, который хотите приостановить. " +
+                    "Номер запроса можно узнать, использовав команду \"/show_requests\"");
+        }
+        var requestOpt = requestRepository.findRequestByIdAndUser(requestId, currentUser);
+        if (requestOpt.isEmpty()) {
+           return new SendMessageWithData(chatId, "У вас нет запроса под таким номером. Попробуйте еще раз: ");
+        }
+        var request = requestOpt.get();
+        request.setIsStop(true);
+        requestRepository.save(request);
+        currentUser.setIsStop(false);
+        userRepository.save(currentUser);
+        return new SendMessageWithData(chatId,String.format("Получение откликов по запросу %S остановлено", requestId));
     }
 
     private User getUserOrSave(Update update) {
@@ -75,8 +100,17 @@ public class BotServiceImpl implements BotService {
             case BACK -> handleBack(chatId, currentUser);
             case RESPONSE -> handleResponse(chatId, currentUser);
             case SHOW_REQUESTS -> handleShow(chatId, currentUser);
+            case STOP_REQUEST -> handleStop(chatId, currentUser);
             default -> unknownCommand(chatId);
         };
+    }
+
+    private SendMessageWithData handleStop(String chatId, User currentUser) {
+            currentUser.setIsStop(true);
+            userRepository.save(currentUser);
+            return new SendMessageWithData(chatId,
+                    "Пожалуйста, введите номер запроса, который хотите приостановить. " +
+                            "Номер запроса можно узнать, использовав команду \"/show_requests\"");
     }
 
     private SendMessageWithData handleShow(String chatId, User currentUser) {
@@ -90,6 +124,7 @@ public class BotServiceImpl implements BotService {
         currentUser.setIsCreationRequest(false);
         currentUser.setRequestStage(RequestStages.SPECIALIST_AGE);
         currentUser.setResponseStages(ResponseStages.NUMBER);
+        currentUser.setIsStop(false);
         userRepository.save(currentUser);
     }
 
@@ -276,9 +311,18 @@ public class BotServiceImpl implements BotService {
         var response = getResponse(currentUser).orElse(new Response(currentUser));
         String text = switch (currentUser.getResponseStages()) {
             case NUMBER, CONTACTS -> {
-                final var number = Long.parseLong(message) / DECRYPT_KEY;
+                Long number = 0L;
+                try {
+                    number = Long.parseLong(message) / DECRYPT_KEY;
+                } catch (NumberFormatException nfe) {
+                    yield "Пожалуйста, введите только цифры";
+                }
                 final var request = requestRepository.findById(number);
                 if (request.isPresent()) {
+                    if (request.get().getIsStop()) {
+                        resetStage(currentUser);
+                        yield "К сожалению, прием откликов по этому запросу остановлен";
+                    }
                     response.setRequest(request.get());
                     currentUser.setResponseStages(ResponseStages.CONTENT);
                     yield "Запрос найден! Пожалуйста, введите в свободной форме свои контактные данные, " +

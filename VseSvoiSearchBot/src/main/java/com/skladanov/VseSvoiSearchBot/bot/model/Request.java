@@ -33,7 +33,10 @@ public class Request {
     private String extra;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "request")
+    @ToString.Exclude
     private List<Response> response;
+
+    private Boolean isStop = false;
 
     public Request(User user) {
         this.user = user;
