@@ -8,6 +8,8 @@ import org.hibernate.Hibernate;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -43,6 +45,14 @@ public class User {
 
     public User (Long id) {
         this.id = id;
+    }
+
+    public String requestsToMessage() {
+        StringJoiner joiner = new StringJoiner("\n\n");
+        for (Request request : requests) {
+            joiner.add(request.toStringToRemind());
+        }
+        return joiner.toString();
     }
 
     @Override

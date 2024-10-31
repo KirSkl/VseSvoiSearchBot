@@ -19,6 +19,7 @@ public class Request {
     private Long id;
     @ManyToOne
     @JoinColumn(name = "users_id")
+    @ToString.Exclude
     private User user;
     private String specAge;
     private String gender;
@@ -56,7 +57,8 @@ public class Request {
     };
 
     public String toStringToRemind() {
-        return  "Возраст специалиста: " + specAge + '\n' +
+        return  "Номер запроса в базе данных: " +id+ '\n' +
+                "Возраст специалиста: " + specAge + '\n' +
                 "Пол специалиста: " + gender + '\n' +
                 "Метод работы: " + methodTherapy + '\n' +
                 "Формат работы: " + formatTherapy + '\n' +

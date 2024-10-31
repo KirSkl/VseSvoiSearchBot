@@ -7,4 +7,5 @@ public class Commands {
     public static final String DELETE_REQUEST = "/delete_req";
     public static final String BACK = "/back";
     public static final String RESPONSE = "/response";
+    public static final String SHOW_REQUESTS = "/show_requests";
 }

@@ -74,8 +74,23 @@ public class BotServiceImpl implements BotService {
             case REQUEST -> handleRequest(chatId, currentUser);
             case BACK -> handleBack(chatId, currentUser);
             case RESPONSE -> handleResponse(chatId, currentUser);
+            case SHOW_REQUESTS -> handleShow(chatId, currentUser);
             default -> unknownCommand(chatId);
         };
+    }
+
+    private SendMessageWithData handleShow(String chatId, User currentUser) {
+        resetStage(currentUser);
+        String requests = currentUser.requestsToMessage();
+        return new SendMessageWithData(chatId, requests.isEmpty() ? "У вас нет сохраненных запросов" : requests);
+    }
+
+    private void resetStage(User currentUser) {
+        currentUser.setIsAnswering(false);
+        currentUser.setIsCreationRequest(false);
+        currentUser.setRequestStage(RequestStages.SPECIALIST_AGE);
+        currentUser.setResponseStages(ResponseStages.NUMBER);
+        userRepository.save(currentUser);
     }
 
     private SendMessageWithData handleHelp(String chatId) {
