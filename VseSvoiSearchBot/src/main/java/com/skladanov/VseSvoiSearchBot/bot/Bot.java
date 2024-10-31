@@ -12,6 +12,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 @Component
 @Slf4j
 public class Bot extends TelegramLongPollingBot {
+    //айди тестового чата, для использования заменить на айди целевого чата
     private static final String TEST_CHAT_ID = "-1002107664061L";
     private final UpdateHandler updateHandler;
 
@@ -46,14 +47,18 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     private void sendRequestMessage(SendMessageWithData message) {
-        String requestMessage = "Привет!\n" + message.getRequest();
+        String requestMessage = "Привет!\n" + message.getRequest().toStringToChat();
         sendMessage(new SendMessage(TEST_CHAT_ID, requestMessage));
     }
 
     private void sendResponseMessage(SendMessageWithData message) {
-        String userId = message.getResponse().getRequest().getUser().getId().toString();
-        String responseMessage = "Привет! Новый отклик на ваш запрос:\n" + message.getResponse();
+        final var response = message.getResponse();
+        String userId = response.getRequest().getUser().getId().toString();
+        //Отправляем запрос, чтобы сразу было понятно, к какому запросу отклик
+        String responseMessage = "Привет! Новый отклик на этот запрос:\n" + response.getRequest().toStringToRemind();
         sendMessage(new SendMessage(userId, responseMessage));
+        //Отправляем отклик отдельным сообщением, чтобы его было удобно переслать
+        sendMessage(new SendMessage(userId, response.toStringSend()));
     }
 
     private void sendMessage(SendMessage message) {

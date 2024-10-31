@@ -11,12 +11,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import static com.skladanov.VseSvoiSearchBot.bot.Commands.*;
 
 import java.util.Optional;
 
 /*
- * todo: отрефакторить этого монстра
- * реализовать получение всех своих запросов/ откликов
+ * todo: реализовать получение всех своих запросов/ откликов
  * реализовать удаление отдельных запросов и откликов
  * реализовать удаление всех запросов/откликов
  * реализовать команду старт как сброс текущих операций
@@ -28,12 +28,6 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class BotServiceImpl implements BotService {
-    public static final String DELETE_RESPONSE = "/delete_resp";
-    private static final String HELP = "/help";
-    private static final String REQUEST = "/request";
-    private static final String DELETE_REQUEST = "/delete_req";
-    private static final String BACK = "/back";
-    private static final String RESPONSE = "/response";
     private static final Long DECRYPT_KEY = 31L;
     private static final int BACK_INDEX = 2; //чтобы вернуться на шаг назад, нужно изменить состояние запроса на 2 значения назад
     private final UserRepository userRepository;
@@ -76,7 +70,7 @@ public class BotServiceImpl implements BotService {
         return switch (message) {
             case HELP -> handleHelp(chatId);
             case DELETE_REQUEST -> handleDeleteRequest(chatId, currentUser);
-            case DELETE_RESPONSE -> handleDeleteResponse(chatId, currentUser);
+            case DELETE_RESPONSE-> handleDeleteResponse(chatId, currentUser);
             case REQUEST -> handleRequest(chatId, currentUser);
             case BACK -> handleBack(chatId, currentUser);
             case RESPONSE -> handleResponse(chatId, currentUser);
@@ -246,7 +240,8 @@ public class BotServiceImpl implements BotService {
             case SEND_APPROVED -> {
                 if (message.equals("/send")) {
                     currentUser.setIsCreationRequest(false);
-                    sendMessageWithData.setRequest(currentUser.getRequests().get(0));
+                    final var requests = currentUser.getRequests();
+                            sendMessageWithData.setRequest(requests.get(requests.size()-1));
                     yield "Готово! Отправил ваш запрос в чат!";
                 } else {
                     yield "Команда не распознана. Чтобы отправить запрос, введите \"/send\". " +
@@ -296,7 +291,8 @@ public class BotServiceImpl implements BotService {
             case SEND_APPROVED -> {
                 if (message.equals("/sendResponse")) {
                     currentUser.setIsAnswering(false);
-                    sendMessageWithData.setResponse(currentUser.getResponses().get(0));
+                    final var responses = currentUser.getResponses();
+                    sendMessageWithData.setResponse(responses.get(responses.size()-1));
                     yield "Отклик отправлен!";
                 } else {
                     yield "Команда не распознана. Чтобы отправить отклик, введите \"/sendResponse\". " +

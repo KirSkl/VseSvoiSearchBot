@@ -1,10 +1,7 @@
 package com.skladanov.VseSvoiSearchBot.bot.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.Hibernate;
 
 import java.util.List;
@@ -14,6 +11,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @RequiredArgsConstructor
+@ToString
 public class Request {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,8 +38,8 @@ public class Request {
         this.user = user;
     }
 
-    @Override
-    public String toString() {
+
+    public String toStringToChat() {
         return "Ищу специалиста: \n" +
                 "Возраст специалиста: " + specAge + '\n' +
                 "Пол специалиста: " + gender + '\n' +
@@ -57,6 +55,19 @@ public class Request {
                 + (id*31);
     };
 
+    public String toStringToRemind() {
+        return  "Возраст специалиста: " + specAge + '\n' +
+                "Пол специалиста: " + gender + '\n' +
+                "Метод работы: " + methodTherapy + '\n' +
+                "Формат работы: " + formatTherapy + '\n' +
+                "Возраст клиента/пациента: " + clientAge + '\n' +
+                "Пол клиента,пациента: " + clientGender + '\n' +
+                "Диагнозы: " + diagnosis + '\n' +
+                "Запрос: " + clientRequest + '\n' +
+                "Бюджет и частота встреч: " + budget + '\n' +
+                "Дополнительные сведения: " + extra;
+    };
+
 
     @Override
     public boolean equals(Object o) {
@@ -70,4 +81,5 @@ public class Request {
     public int hashCode() {
         return getClass().hashCode();
     }
+
 }

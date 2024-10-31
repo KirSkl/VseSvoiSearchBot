@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.Hibernate;
 
 import java.util.Objects;
@@ -12,6 +13,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @RequiredArgsConstructor
+@ToString
 public class Response {
     @ManyToOne
     @JoinColumn(name = "users_id")
@@ -34,8 +36,7 @@ public class Response {
         this.user = user;
     }
 
-    @Override
-    public String toString() {
+    public String toStringSend() {
         return content + "Контактные данные: " + contacts;
     }
 
